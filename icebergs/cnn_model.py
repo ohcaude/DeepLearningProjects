@@ -9,15 +9,17 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from keras.models import load_model,Model,Sequential
 
-new_model = False
+new_model = True
 
-df = pd.read_pickle('data/features.pckl')
+df = pd.read_pickle('icebergs/data/features.pckl')
 
 band1 = np.array(list(df.band_1.values))
 band2 = np.array(list(df.band_2.values))
 ims1 = np.reshape(band1,(band1.shape[0],75,75))#-band1.min()
 ims2 = np.reshape(band2,(band2.shape[0],75,75))#-band2.min()
 X = np.stack((ims1,ims2),axis=-1)
+X = X[:,10:-10,10:-10]
+print(X.shape)
 meanX = np.mean(X,axis=0)
 stdX  = np.std(X,axis=0)
 X = (X-meanX)/stdX
@@ -33,8 +35,8 @@ input_shape = X.shape[1:]
 if new_model:
     # build model
     model = Sequential()
-    model.add(Conv2D(64, kernel_size=(5, 5), strides=(1, 1),activation='relu',input_shape=input_shape))
-    #model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+    model.add(Conv2D(64, kernel_size=(3, 3), strides=(1, 1),activation='relu',input_shape=input_shape))
+#    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
     model.add(Dropout(0.2))
     model.add(Conv2D(128, (3, 3), activation='relu'))  #64
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -52,7 +54,7 @@ if new_model:
     model.add(Dropout(0.3))
     model.add(Dense(num_classes, activation='sigmoid'))
 else:
-    old_model = load_model('models/my_model_kaggle4.h5')
+    old_model = load_model('icebergs/models/my_model_kaggle4.h5')
     intermediate_model = Model(inputs=old_model.input,outputs=old_model.get_layer(index=12).output)
     model=Sequential()
     for layer in intermediate_model.layers:
@@ -73,15 +75,15 @@ valgen = ImageDataGenerator(featurewise_center=True,featurewise_std_normalizatio
 valgen.fit(X_test)
 
 # train/validate
-model.compile(loss=binary_crossentropy,optimizer=Adam(lr=0.0001),metrics=['accuracy'])
+model.compile(loss=binary_crossentropy,optimizer=Adam(lr=0.001),metrics=['accuracy'])
 
 if new_model:
     history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=300,validation_data=valgen.flow(X_test,Y_test), verbose=1)
 else:
     history = model.fit_generator(datagen.flow(X_train,Y_train,batch_size=batch_size), steps_per_epoch = int(len(X_train)/batch_size),epochs=300,validation_data=valgen.flow(X_test,Y_test),verbose=1,initial_epoch=150)
 
-model.save('models/my_model_kaggle6.h5')
-pickle.dump((meanX,stdX),open('models/normalization_kaggle5.pckl','wb'))
+model.save('icebergs/models/my_model_kaggle7.h5')
+pickle.dump((meanX,stdX),open('icebergs/models/normalization_kaggle7.pckl','wb'))
 
 #show results
 plt.plot(history.history['acc'])
