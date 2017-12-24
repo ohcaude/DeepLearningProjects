@@ -11,14 +11,14 @@ from keras.models import load_model,Model,Sequential
 
 new_model = True
 
-df = pd.read_pickle('icebergs/data/features.pckl')
+df = pd.read_json('icebergs/data/train.json')
 
 band1 = np.array(list(df.band_1.values))
 band2 = np.array(list(df.band_2.values))
 ims1 = np.reshape(band1,(band1.shape[0],75,75))#-band1.min()
 ims2 = np.reshape(band2,(band2.shape[0],75,75))#-band2.min()
 X = np.stack((ims1,ims2),axis=-1)
-X = X[:,10:-10,10:-10]
+#X = X[:,10:-10,10:-10]
 print(X.shape)
 meanX = np.mean(X,axis=0)
 stdX  = np.std(X,axis=0)
@@ -50,7 +50,7 @@ if new_model:
     model.add(Flatten())
     model.add(Dense(512, activation='relu'))  #1024
     model.add(Dropout(0.3))
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.3))
     model.add(Dense(num_classes, activation='sigmoid'))
 else:
@@ -78,7 +78,7 @@ valgen.fit(X_test)
 model.compile(loss=binary_crossentropy,optimizer=Adam(lr=0.001),metrics=['accuracy'])
 
 if new_model:
-    history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=300,validation_data=valgen.flow(X_test,Y_test), verbose=1)
+    history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=100,validation_data=valgen.flow(X_test,Y_test), verbose=1)
 else:
     history = model.fit_generator(datagen.flow(X_train,Y_train,batch_size=batch_size), steps_per_epoch = int(len(X_train)/batch_size),epochs=300,validation_data=valgen.flow(X_test,Y_test),verbose=1,initial_epoch=150)
 
