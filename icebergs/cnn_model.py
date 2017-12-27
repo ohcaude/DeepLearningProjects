@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
-from keras.layers import Dense,Conv2D,MaxPooling2D,Flatten,Dropout
+from keras.layers import Dense,Conv2D,MaxPooling2D,Flatten,Dropout,BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from keras.models import load_model,Model,Sequential
+from keras.callbacks import ModelCheckpoint
+
 from denoising import load_denoised_data
 
 new_model = True
@@ -79,10 +81,10 @@ valgen = ImageDataGenerator(featurewise_center=True,featurewise_std_normalizatio
 valgen.fit(X_test)
 
 # train/validate
-model.compile(loss=binary_crossentropy,optimizer=Adam(lr=0.001),metrics=['accuracy'])
-
+model.compile(loss=binary_crossentropy,optimizer=Adam(lr=0.0001),metrics=['accuracy'])
+checkpointer = ModelCheckpoint(filepath='/tmp/weights.hdf5', verbose=1, save_best_only=True)
 if new_model:
-    history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=1000,validation_data=valgen.flow(X_test,Y_test), verbose=1)
+    history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=1000,validation_data=valgen.flow(X_test,Y_test), verbose=1,callbacks=[checkpointer])
 else:
     history = model.fit_generator(datagen.flow(X_train,Y_train,batch_size=batch_size), steps_per_epoch = int(len(X_train)/batch_size),epochs=300,validation_data=valgen.flow(X_test,Y_test),verbose=1,initial_epoch=150)
 
