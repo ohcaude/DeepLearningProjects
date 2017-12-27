@@ -1,4 +1,3 @@
-import pickle
 import numpy as np
 import pandas as pd
 from keras.losses import binary_crossentropy
@@ -8,24 +7,24 @@ from keras.preprocessing.image import ImageDataGenerator
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from keras.models import load_model,Model,Sequential
+from denoising import load_denoised_data
 
 new_model = True
 
-df = pd.read_json('icebergs/data/train.json')
-
-band1 = np.array(list(df.band_1.values))
-band2 = np.array(list(df.band_2.values))
-ims1 = np.reshape(band1,(band1.shape[0],75,75))#-band1.min()
-ims2 = np.reshape(band2,(band2.shape[0],75,75))#-band2.min()
-X = np.stack((ims1,ims2),axis=-1)
+#df = pd.read_json('icebergs/data/train.json')
+#band1 = np.array(list(df.band_1.values))
+#band2 = np.array(list(df.band_2.values))
+#ims1 = np.reshape(band1,(band1.shape[0],75,75))#-band1.min()
+#ims2 = np.reshape(band2,(band2.shape[0],75,75))#-band2.min()
+#X = np.stack((ims1,ims2),axis=-1)
 #X = X[:,10:-10,10:-10]
-print(X.shape)
-meanX = np.mean(X,axis=0)
-stdX  = np.std(X,axis=0)
-X = (X-meanX)/stdX
-Y = df.is_iceberg.values
-#Y = np.stack((Y,1-Y),axis=-1)
+#print(X.shape)
+#meanX = np.mean(X,axis=0)
+#stdX  = np.std(X,axis=0)
+#X = (X-meanX)/stdX
+#Y = df.is_iceberg.values
 
+X,Y = load_denoised_data()
 
 # define parameters
 num_classes=1
@@ -35,21 +34,27 @@ input_shape = X.shape[1:]
 if new_model:
     model = Sequential()
     model.add(Conv2D(64, kernel_size=(3, 3), strides=(1, 1),activation='relu',input_shape=input_shape))
-#    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    model.add(Dropout(0.2))
-    model.add(Conv2D(128, (3, 3), activation='relu'))  #64
+    model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.2))
     model.add(Conv2D(128, (3, 3), activation='relu'))  #64
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(128, (3, 3), activation='relu'))  #64
+    model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.2))
     model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.2))
     model.add(Flatten())
     model.add(Dense(512, activation='relu'))  #1024
+    model.add(BatchNormalization())
     model.add(Dropout(0.3))
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
+    model.add(BatchNormalization())
     model.add(Dropout(0.3))
     model.add(Dense(num_classes, activation='sigmoid'))
 else:
@@ -77,12 +82,12 @@ valgen.fit(X_test)
 model.compile(loss=binary_crossentropy,optimizer=Adam(lr=0.001),metrics=['accuracy'])
 
 if new_model:
-    history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=100,validation_data=valgen.flow(X_test,Y_test), verbose=1)
+    history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=batch_size), steps_per_epoch=int(len(X_train)/batch_size), epochs=1000,validation_data=valgen.flow(X_test,Y_test), verbose=1)
 else:
     history = model.fit_generator(datagen.flow(X_train,Y_train,batch_size=batch_size), steps_per_epoch = int(len(X_train)/batch_size),epochs=300,validation_data=valgen.flow(X_test,Y_test),verbose=1,initial_epoch=150)
 
-model.save('icebergs/models/my_model_kaggle7.h5')
-pickle.dump((meanX,stdX),open('icebergs/models/normalization_kaggle7.pckl','wb'))
+model.save('icebergs/models/denoised.h5')
+#pickle.dump((meanX,stdX),open('icebergs/models/normalization_kaggle7.pckl','wb'))
 
 #show results
 plt.plot(history.history['acc'])
