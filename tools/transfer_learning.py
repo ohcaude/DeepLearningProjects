@@ -3,8 +3,8 @@ from keras.models import load_model,Model,Sequential
 from keras.layers import Dense,Conv2D,MaxPooling2D,Flatten,Dropout,BatchNormalization
 
 def transfer_inception(feature_layer,input_shape):
-    #mixed0: edges
-    #mixed4: shapes
+    #mixed0: edges  % approx factor of 8 -3, 256 channels
+    #mixed4: shapes % approx factor of 16 -2 768 channels
     base_model = InceptionV3(weights='imagenet', include_top=False,input_shape=input_shape)
     input_layer = base_model.layers[0].input
     for layer in base_model.layers:
@@ -17,7 +17,7 @@ def transfer_inception(feature_layer,input_shape):
 
 
 def build_model_on_inception(feature_layer,input_shape):
-    input_layer,feature_layer = transfer_inception(feature_layer)
+    input_layer,feature_layer = transfer_inception(feature_layer,input_shape)
     
     x = Flatten()(feature_layer)
     x = Dense(64, activation='relu')(x)
@@ -26,7 +26,7 @@ def build_model_on_inception(feature_layer,input_shape):
     new_model = Model(inputs=[input_layer],outputs=[output_layer]) 
     return new_model
 
-#model = build_model_on_inception('mixed4')
+#model = build_model_on_inception('mixed4',(256,256,3))
 
 
 #model.summary()
